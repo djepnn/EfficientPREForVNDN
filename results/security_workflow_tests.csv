@@ -1,0 +1,8 @@
+test,expected,passed,error_name,error_message
+wrong-data-name-binding,revert,true,Error,missing revert data
+non-producer-key-submission,revert,true,Error,missing revert data
+invalid-producer-signature,revert,true,Error,missing revert data
+replayed-key-submission,revert,true,Error,missing revert data
+unauthorized-confirmation,revert,true,Error,missing revert data
+empty-dispute-evidence,revert,true,Error,missing revert data
+early-timeout-finalization,revert,true,Error,missing revert data

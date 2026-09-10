@@ -1,0 +1,18 @@
+{
+  "status": "passed",
+  "contract_source_sha256": "9831334c06a4cd2aed0c8ce4c670340f7d86b187d62f8c428d978331c674c52c",
+  "successful_transactions": 483,
+  "unique_transaction_hashes": 483,
+  "receipts_verified": 483,
+  "deployments": 30,
+  "negative_tests_passed": 7,
+  "negative_tests_total": 7,
+  "failed_attempt_exit_statuses": {
+    "1": 1,
+    "2": 1,
+    "3": 143
+  },
+  "successful_attempt_exit_status": 0,
+  "composite_pairing": "network seeds 1-20 paired deterministically with contract iterations 1-20; contract iterations 21-30 retained in component summaries",
+  "chain_scope": "local deterministic Ganache execution; not an estimate of public-chain confirmation time"
+}
