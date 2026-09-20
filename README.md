@@ -1,43 +1,32 @@
-# EfficientPREForVNDN: Blockchain Reference Implementation
+# Algorithm-to-code mapping
 
-This artifact contains the Solidity implementation of the on-chain procedures
-described in *Proactive Key Distribution for Efficient Data Trading in
-NDN-based Vehicular Networks*.
+The four algorithm families follow the first manuscript's organization. Their implementations below use the revised transaction-specific escrow and dispute workflow rather than immediate settlement on key submission.
 
-The code covers the procedures represented by the smart-contract algorithms in
-the first-submission manuscript: data listing, fund locking, signed
-re-encryption-key submission, consumer confirmation, timeout settlement,
-key-timeout refund, and dispute recording. The current manuscript describes the
-same workflow in prose rather than retaining the pseudocode blocks.
+| Algorithm family | Implemented functions | Role in the revised workflow |
+| --- | --- | --- |
+| SC_DataList | `listData` | Register producer, price, plaintext hash and packet commitment. Reject duplicate listings and empty commitments. |
+| SC_Fund | `deposit` | Accept exact payment and bind a separate purchase ID to the listing, consumer and recipient key. |
+| SC_Fund | `withdrawAfterKeyTimeout` | Credit a refund when a funded purchase receives no key before its deadline. |
+| SC_Fund | `withdrawCredit` | Withdraw accumulated credit with a re-entry guard. Crediting and withdrawal are separate operations. |
+| SC_Trade | `submissionDigest`, `submitRK` | Bind the key bytes, listing, consumer, recipient key, purchase ID, expiry, chain and contract. Authenticate submission and keep payment locked. |
+| SC_Trade | `confirmReceipt`, `finalizeAfterTimeout` | Create producer credit following consumer confirmation or an unchallenged evidence-window expiry. |
+| SC_Dispute | `submitDispute` | Record the consumer's evidence commitment within the evidence window and freeze ordinary settlement. |
+| SC_Dispute | `adjudicate` | Apply the trusted adjudicator's recorded payment/refund decision within the arbitration window. |
+| SC_Dispute | `refundAfterArbitrationTimeout` | Credit a consumer refund if arbitration times out. |
+| Shared bookkeeping | `finish` | Clear the escrowed amount, record the terminal state and credit exactly one recipient. Entry-point guards control which transitions may call it. |
+| Initialization | constructor | Set the adjudicator and the key, evidence and arbitration windows. |
 
-## Repository contents
+`name` identifies a listing. `id` identifies a purchase, so concurrent purchases of one listing do not share an escrow entry. `consumerKey` is the purchase's recipient PRE public key, not the off-chain request-signing credential. `rk` stores serialized key material. Signature authentication does not establish its decryption correctness.
 
-- `contracts/VehicularDataTrading.sol`: the measured Solidity contract.
-- `scripts/contract_benchmark_v1.mjs`: the exact benchmark and negative-test
-  driver used for the reported Ganache campaign.
-- `docs/protocol-mapping.md`: mapping from paper phases to contract functions.
-- `results/`: the retained transaction table, local-chain receipts, security
-  test outcomes, summaries, and independent validation record.
-- `package.json` and `package-lock.json`: exact JavaScript dependencies used by
-  the benchmark driver.
+The `recover` hook must implement the measured contract's signed-message recovery semantics and canonical-signature checks. Its implementation is not part of this excerpt. The source contains no mock signer or bypass of the `submitRK` identity check.
 
-The SHA-256 digest of the contract used in the validated run is
-`9831334c06a4cd2aed0c8ce4c670340f7d86b187d62f8c428d978331c674c52c`.
+The contract records an evidence hash and a decision hash, not the confidential adjudication computation. A timeout is a settlement rule, not proof of delivery. The excerpt does not implement public PRE verification or unconditional atomic exchange.
 
-## Scope and limitations
+## Implementation boundary
 
-This is real research code, not production software. It has not undergone a
-production security audit. The contract authenticates and records an ordinary,
-single-hop, unidirectional PRE key submission; it does not implement VPRE,
-`ProofGen`, or `VerifyRK`, and it does not claim public verification of PRE-key
-correctness.
+The source compiles with Solidity 0.8.24 as an **abstract contract**. It does not produce deployable creation bytecode by itself. The `recover` signature-recovery function is an explicit integration hook, not an empty implementation or a permissive signature check. Its required behavior is documented in the source. The original service-facing getters are also omitted.
 
-The artifact is deliberately dependency-bound, not deliberately broken. It
-does not bundle an Ubuntu virtual machine, a blockchain node, credentials,
-private keys, or a turnkey container. Re-execution requires the documented
-Node.js, Solidity, ethers, and Ganache environment. The mnemonic in the
-benchmark is Ganache's public deterministic development mnemonic and must never
-be used on a public network or for real funds.
+The package does not include deployment/account configuration, the trusted adjudicator's off-chain evidence processing, PRE generation or transformation clients, RSU/CN request handling, networking strategies, simulations, or experiment drivers. It is an algorithm excerpt, not a complete trading application or independently runnable reproduction bundle.
 
 ## Validated environment
 
@@ -46,34 +35,4 @@ be used on a public network or for real funds.
 - Ganache 7.9.2, local chain ID 1337
 - Solidity compiler 0.8.24, optimizer disabled
 - ethers 6.17.0
-
-## Re-running the contract campaign
-
-Install the locked JavaScript dependencies:
-
-```bash
-npm ci
-```
-
-Start a local Ganache instance in one terminal:
-
-```bash
-ganache --server.host 127.0.0.1 --server.port 8545 \
-  --wallet.mnemonic "test test test test test test test test test test test junk" \
-  --chain.chainId 1337 --miner.instamine eager
-```
-
-Run the measured contract workflow in another terminal. Choose a new output
-directory because the driver refuses to overwrite existing evidence:
-
-```bash
-node scripts/contract_benchmark_v1.mjs \
-  --source=contracts/VehicularDataTrading.sol \
-  --out-dir=run_001 --repetitions=30 \
-  --rpc=http://127.0.0.1:8545
-```
-
-Gas usage is an EVM execution measure. Local Ganache wall-clock receipt latency
-is not a public-chain confirmation or finality estimate.
-
-See `UPLOAD_TO_GITHUB.md` for publication steps.
+- 
